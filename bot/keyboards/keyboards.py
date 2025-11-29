@@ -1,41 +1,47 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from bot.texts import FILTER_QUESTIONS, FIELD_NAMES, FIELD_LABELS, FILTER_DEPENDENCIES
 
 
-def create_filter_keyboard(field_name: str) -> InlineKeyboardMarkup:
-    """Создать клавиатуру для фильтра"""
-    options = FILTER_QUESTIONS[field_name]["options"]
+def get_main_menu() -> InlineKeyboardMarkup:
+    """Главное меню"""
     buttons = [
         [InlineKeyboardButton(
-            text=label,
-            callback_data=f"filter_{field_name}_{value}"
-        )]
-        for value, label in options.items()
+            text="📊 Анализ данных поступления",
+            callback_data="start_analysis"
+        )],
+        [InlineKeyboardButton(
+            text="ℹ️ Справка",
+            callback_data="help"
+        )],
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def create_change_filter_keyboard(current_filters: dict) -> InlineKeyboardMarkup:
-    """Создать клавиатуру для выбора фильтра к изменению"""
+def create_filter_buttons(options: list) -> InlineKeyboardMarkup:
+    """
+    Создать кнопки для фильтра из списка опций
+
+    Args:
+        options: список кортежей (value, label)
+
+    Returns:
+        InlineKeyboardMarkup с кнопками для каждой опции
+    """
     buttons = []
 
-    for field_name in FIELD_NAMES:
-        current_value = current_filters.get(field_name, "не выбран")
-        current_label = FILTER_QUESTIONS[field_name]["options"].get(
-            current_value, current_value)
+    for value, label in options:
+        # Обрезаем длинный текст если необходимо
+        display_text = label[:40] + "..." if len(label) > 40 else label
+        buttons.append([
+            InlineKeyboardButton(
+                text=display_text,
+                callback_data=f"filter_{value}"
+            )
+        ])
 
-        label = f"{FIELD_LABELS[field_name]}: {current_label}"
-        buttons.append([InlineKeyboardButton(
-            text=label,
-            callback_data=f"change_filter_{field_name}"
-        )])
+    # Кнопка отмены
+    buttons.append([InlineKeyboardButton(
+        text="❌ Отмена",
+        callback_data="cancel"
+    )])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-
-def create_cancel_keyboard() -> InlineKeyboardMarkup:
-    """Создать клавиатуру отмены"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="❌ Отменить", callback_data="cancel_parsing")]
-    ])
