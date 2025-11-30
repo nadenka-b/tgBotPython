@@ -133,7 +133,7 @@ class BackgroundParser:
 
     async def parse_and_save_all(self):
         """Парсить ВСЕ комбинации и сохранить в БД"""
-        logger.info("🚀 Начинается фоновый парсинг данных...")
+        logger.info(f"🚀 Начинается фоновый парсинг данных {datetime.now()}...")
 
         try:
             combinations = self.db.get_all_filter_combinations()
@@ -155,10 +155,6 @@ class BackgroundParser:
 
                     if df is not None and not df.empty:
                         records = df.to_dict('records')
-                        # with open('test.txt', 'w', encoding='utf-8') as file:
-                        #     for record in records:
-                        #         file.write(str(record) + '\n')
-                        #         print(record)
 
                         saved = await self.db.save_data_batch(records, combo)
                         total_records += saved
@@ -176,19 +172,7 @@ class BackgroundParser:
                     continue
 
             logger.info(
-                f"🎉 Парсинг завершен! Всего сохранено {total_records} записей")
+                f"🎉 Парсинг завершен {datetime.now()}! Всего сохранено {total_records} записей")
 
         except Exception as e:
             logger.error(f"❌ Критическая ошибка: {e}")
-
-
-# async def main():
-#     base_url = "https://abiturient.kpfu.ru/entrant/abit_entrant_originals_list"
-#     session = aiohttp.ClientSession()
-#     parser = Parser(session, base_url)
-#     bp = BackgroundParser(parser)
-#     combinations = await bp.get_all_filter_combinations()
-#     print(len(combinations))
-
-# if __name__ == "__main__":
-#     asyncio.run(main())

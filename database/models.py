@@ -48,12 +48,12 @@ class FilterCombination(Base):
     def to_filters_dict(self) -> dict[str, str]:
         """Преобразовать в словарь value для URL"""
         return {
-            'level': str(self.level_value),
-            'faculty': str(self.faculty_value),
-            'inst': str(self.inst_value),
-            'speciality': str(self.speciality_value),
-            'typeofstudy': str(self.typeofstudy_value),
-            'category': str(self.category_value),
+            'p_level': str(self.level_value),
+            'p_inst': str(self.inst_value),
+            'p_faculty': str(self.faculty_value),
+            'p_speciality': str(self.speciality_value),
+            'p_typeofstudy': str(self.typeofstudy_value),
+            'p_category': str(self.category_value),
         }
 
     def to_names_dict(self) -> dict[str, str]:
@@ -104,6 +104,8 @@ class Statistics(Base):
         index=True
     )
 
+    admission_category = Column(String(50), nullable=True, index=True)
+    available_seats = Column(Integer, nullable=True)
     epgu_id = Column(String(15), nullable=True, index=True)
     applicant_id = Column(String(15), nullable=True, index=True)
     score = Column(Integer, nullable=True)

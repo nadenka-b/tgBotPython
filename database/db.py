@@ -125,11 +125,19 @@ class Database:
 
             count = 0
             for record in records:
+                score = None
+                if record.get('score'):
+                    try:
+                        score = int(record['score'])
+                    except (ValueError, TypeError):
+                        score = None
                 row = Statistics(
                     filter_combination_id=combo.id,
+                    admission_category=record.get('admission_category'),
+                    available_seats=record.get('available_seats'),
                     epgu_id=record.get('epgu_id'),
                     applicant_id=record.get('applicant_id'),
-                    score=record.get('score'),
+                    score=score,
                     agreement=record.get('agreement'),
                     status=record.get('status'),
                     note=record.get('note'),
@@ -209,27 +217,6 @@ class Database:
             return []
         finally:
             session.close()
-
-    # def get_filter_options(self, filter_name: str) -> list[str]:
-    #     """
-    #     Получить все уникальные значения для фильтра
-
-    #     Args:
-    #         filter_name: 'level', 'faculty', ...
-
-    #     Returns:
-    #         Список уникальных значений
-    #     """
-    #     session = self.get_session()
-    #     try:
-    #         column = getattr(Statistics, filter_name)
-    #         results = session.query(column).distinct().all()
-    #         return [r for r in results if r]
-    #     except Exception as e:
-    #         logger.error(f"❌ Ошибка при получении опций: {e}")
-    #         return []
-    #     finally:
-    #         session.close()
 
 
 def create_db_connection(config: Config) -> Database:
