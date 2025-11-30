@@ -2,8 +2,7 @@ import aiohttp
 import logging
 import pandas as pd
 from bs4 import BeautifulSoup
-from typing import Dict, List, Optional
-from config.config import load_config
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +14,15 @@ class Parser:
         self.session: Optional[aiohttp.ClientSession] = session
         self.base_url = base_url
 
-    async def fetch_page(self, params: Dict[str, str]) -> str:
+    async def fetch_page(self, params: dict[str, str]) -> str:
         """
         Загрузить страницу с заданными параметрами
         params: Словарь параметров для URL
         """
         try:
+            if not self.session:
+                logging.warning("Сессия не инициализирована")
+                return ""
             async with self.session.get(self.base_url, params=params) as response:
                 if response.status == 200:
                     return await response.text()
@@ -32,22 +34,24 @@ class Parser:
             logger.error(f"Ошибка при запросе: {e}")
             return ""
 
-    def extract_filter_options(self, html: str, filter_name: str) -> List[tuple]:
+    def extract_filter_options(self, html: str, filter_name: str) -> list[tuple]:
         """
         Извлечь доступные опции из селекта
         filter_name: 'level', 'faculty', 'inst', 'speciality', 'typeofstudy', 'category'
         Возвращает список (value, label) для кнопок
         """
         soup = BeautifulSoup(html, 'html.parser')
-        # print(soup)
 
-        select = soup.find('select', {'name': filter_name})
+        select = soup.find('select', {'name': f"p_{filter_name}"})
         if not select:
             return []
 
         options = []
         for item in select.find_all("option"):
-            value = item.get('value', '').strip()
+            value = item.get('value')
+            if not value:
+                continue
+            value = str(value).strip()
             text = item.get_text(strip=True)
 
             if value and text and not "(для приема иностранных граждан)" in text:
@@ -91,14 +95,16 @@ class Parser:
 
         if headers and rows:
             df = pd.DataFrame(rows, columns=headers)
-        elif rows:
-            df = pd.DataFrame(rows)
+            df = df.rename(columns=column_mapping)
+            needed_columns = ['epgu_id', 'applicant_id' 'score',
+                              'agreement', 'status', 'note']
+            df = df[[col for col in needed_columns if col in df.columns]]
         else:
             df = pd.DataFrame()
 
         return df
 
-    async def get_filter_chain(self, filter_type: str, current_params: Dict[str, str]) -> List[tuple]:
+    async def get_filter_chain(self, filter_type: str, current_params: dict[str, str]) -> list[tuple]:
         """
         Получить опции следующего фильтра на основе текущих параметров
         """
@@ -111,8 +117,11 @@ class Parser:
             await self.session.close()
 
 
-# Глобальный парсер
-if __name__ == "__main__":
-    config = load_config()
-    session = aiohttp.ClientSession()
-    parser = Parser(session, config.parser.base_url)
+column_mapping = {
+    'Уникальный id абитуриента ЕПГУ': 'epgu_id',
+    'id абитуриента': 'applicant_id',
+    'Сумма конкурсных баллов': 'score',
+    'Заявление о согласии на зачисление': 'agreement',
+    'Статус': 'status',
+    'Примечание': 'note',
+}

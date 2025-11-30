@@ -5,7 +5,8 @@
 
 import logging
 import os
-from typing import Optional
+from database.db import Database
+import pandas as pd
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
@@ -23,12 +24,13 @@ from bot.keyboards import get_main_menu, create_filter_buttons
 logger = logging.getLogger(__name__)
 
 
-def create_router(parser: Parser) -> Router:
+def create_router(parser: Parser, db: Database) -> Router:
     """
     Создать роутер с обработчиками
 
     Args:
         parser: экземпляр парсера КФУ
+        db: экземпляр БД
 
     Returns:
         Router с зарегистрированными обработчиками
@@ -160,25 +162,34 @@ def create_router(parser: Parser) -> Router:
         processing_msg = await message.answer(messages.LOADING_TABLE)
 
         try:
-            # Загружаем страницу с выбранными параметрами
-            html = await parser.fetch_page(current_params)
+            # 🆕 ВМЕСТО ПАРСИНГА - БЕРЕМ ИЗ БД
+            records = db.get_data_by_filters(
+                p_level=current_params.get('p_level'),
+                p_faculty=current_params.get('p_faculty'),
+                p_inst=current_params.get('p_inst'),
+                p_speciality=current_params.get('p_speciality'),
+                p_typeofstudy=current_params.get('p_typeofstudy'),
+                category=current_params.get('category'),
+            )
 
-            # Парсим таблицу
-            df = parser.extract_table_data(html)
-            with open('df.txt', 'w', encoding='utf-8') as file:
-                if df is not None:
-                    for row in df.values:
-                        for cell in row:
-                            file.write(str(cell) + '\t')
-                        file.write('\n')
-
-            if df is None or df.empty:
+            if not records:
                 await processing_msg.edit_text(
                     messages.ERROR_TABLE_NOT_FOUND,
                     reply_markup=get_main_menu()
                 )
                 await state.clear()
                 return
+
+            # Преобразуем SQLAlchemy объекты в DataFrame
+            df = pd.DataFrame([
+                {
+                    'Направление': r.epgu_id,
+                    'Заявления': r.score,
+                    'Статус': r.status,
+                    # ... остальные колонки
+                }
+                for r in records
+            ])
 
             # Анализируем данные
             analyzer = DataAnalyzer(df)

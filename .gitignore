@@ -1,5 +1,8 @@
 .env
 
+logs/
+debug/
+
 .venv/
 .vscode/
 __pycache__/

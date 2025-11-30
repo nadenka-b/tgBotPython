@@ -1,5 +1,4 @@
 import pandas as pd
-from typing import Dict, List, Tuple
 import logging
 from datetime import datetime
 
@@ -13,7 +12,7 @@ class DataAnalyzer:
         self.df = df
         self.analysis_results = {}
 
-    def analyze_all(self) -> Dict:
+    def analyze_all(self) -> dict:
         """Выполнить полный анализ данных"""
         results = {
             'total_rows': len(self.df),
@@ -25,7 +24,7 @@ class DataAnalyzer:
         self.analysis_results = results
         return results
 
-    def get_most_demanded_specialties(self, top_n: int = 10) -> List[Dict]:
+    def get_most_demanded_specialties(self, top_n: int = 10) -> list[dict]:
         """
         Получить самые востребованные направления
         (по количеству заявлений)
@@ -61,7 +60,7 @@ class DataAnalyzer:
 
         return results
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """Получить общую статистику"""
         stats = {
             'total_rows': len(self.df),
@@ -129,7 +128,7 @@ class DataAnalyzer:
             return False
 
 
-def create_analysis_report(df: pd.DataFrame) -> Tuple[Dict, str]:
+def create_analysis_report(df: pd.DataFrame) -> tuple[dict, str]:
     """
     Создать отчет анализа
     Возвращает (результаты анализа, текстовый отчет)
