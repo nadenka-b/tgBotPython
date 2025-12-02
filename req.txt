@@ -3,6 +3,7 @@ aiohttp==3.13.2
 apscheduler==3.11.1
 beautifulsoup4==4.14.2
 environs==14.5.0
+openpyxl==3.1.5
 pandas==2.3.3
 psycopg2==2.9.11
 sqlalchemy==2.0.44

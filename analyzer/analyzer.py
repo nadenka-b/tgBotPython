@@ -1,13 +1,15 @@
 import logging
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from io import BytesIO
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
+from typing import Union
+
 from database.db import Database
 from database.models import FilterCombination, Statistics
 
 logger = logging.getLogger(__name__)
-
-ALL_CATEGORIES = ['без вступительных испытаний',
-                  'целевая квота', 'особая квота', 'отдельная квота']
 
 
 class DataAnalyzer:
@@ -15,6 +17,42 @@ class DataAnalyzer:
 
     def __init__(self, db: Database):
         self.db = db
+
+    def _create_excel_workbook(self) -> openpyxl.Workbook:
+        """Создает новый Excel файл"""
+        return openpyxl.Workbook()
+
+    def _style_header(self, ws, row_num):
+        """Стилизует заголовочную строку"""
+        for cell in ws[row_num]:
+            if cell.value is not None:
+                cell.fill = PatternFill(
+                    start_color="4472C4", end_color="4472C4", fill_type="solid")
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.alignment = Alignment(
+                    horizontal="center", vertical="center", wrap_text=True)
+
+    def _get_bytes_io(self, wb: openpyxl.Workbook) -> BytesIO:
+        """Преобразует Excel в BytesIO (для отправки)"""
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer
+
+    def _auto_adjust_column(self, ws, column_letter):
+        column = ws[column_letter]
+        max_length = 0
+
+        for cell in column:
+            try:
+                cell_length = len(str(cell.value))
+                if cell_length > max_length:
+                    max_length = cell_length
+            except:
+                pass
+
+        adjusted_width = max(10, max_length + 2)
+        ws.column_dimensions[column_letter].width = adjusted_width
 
     def _analyze_categoties(self, session: Session, filter_id, filter_note) -> tuple[dict[str, dict[str, int]], int]:
         category_stats = session.query(
@@ -56,7 +94,7 @@ class DataAnalyzer:
                 f"✅ Категория '{cat_name}': согласились {agreed_count}, мест {available_places}, заняли {admitted_by_category[cat_name]['total']}")
         return admitted_by_category, occupied_places
 
-    def analyze_speciality(self, filters: dict) -> dict:
+    def analyze_speciality(self, filters: dict) -> Union[BytesIO, dict]:
         """Анализ конкретного направления"""
         session = self.db.get_session()
         try:
@@ -92,6 +130,7 @@ class DataAnalyzer:
                 filter_id,
                 Statistics.admission_category == 'общий конкурс',
             ).limit(1).scalar()
+
             if not total_available_places:
                 logger.warning(
                     "Не найдены доступные места по этому направлению")
@@ -114,24 +153,71 @@ class DataAnalyzer:
             scores: list = [
                 s.score for s in general_participants if s.score is not None]
 
-            result = {
-                'speciality_name': combo.speciality_name,
-                'total_applications': total_apps,
-                'total_participants': total_participants,
-                'total_places': total_available_places,
-                'places_general_competition': remaining_places,
-                'applicants_per_place': round(total_participants / remaining_places, 2),
+            wb = self._create_excel_workbook()
+            ws = wb.active
+            if not ws:
+                return {'error': 'Ошибка создания файла'}
+            ws.title = "Анализ направления"
 
-                'special_categories': admitted_by_category,
+            ws['A1'] = "АНАЛИЗ НАПРАВЛЕНИЯ"
+            ws['A1'].font = Font(bold=True, size=14)
+            ws.merge_cells('A1:D1')
 
-                'avg_score': round(sum(scores) / len(scores), 1) if scores else None,
-                'min_score': min(scores) if scores else None,
-                'max_score': max(scores) if scores else None,
-            }
+            ws['A2'] = "Название специальности:"
+            ws['B2'] = str(combo.speciality_name)
+
+            ws['A3'] = "Всего заявлений:"
+            ws['B3'] = total_apps
+
+            ws['A4'] = "Всего конкурсантов:"
+            ws['B4'] = total_participants
+
+            ws['A5'] = "Всего мест:"
+            ws['B5'] = total_available_places
+
+            ws['A6'] = "Мест на общий конкурс:"
+            ws['B6'] = remaining_places
+
+            ws['A7'] = "Заявлений на место:"
+            ws['B7'] = round(total_participants / remaining_places,
+                             2) if remaining_places > 0 else 0
+
+            ws['A8'] = "Средний балл:"
+            ws['B8'] = round(sum(scores) / len(scores), 1) if scores else None
+
+            ws['A9'] = "Минимальный балл:"
+            ws['B9'] = min(scores) if scores else None
+
+            ws['A10'] = "Максимальный балл:"
+            ws['B10'] = max(scores) if scores else None
+
+            if admitted_by_category:
+                ws['A12'] = "Специальные категории"
+                ws['A12'].font = Font(bold=True, size=12)
+
+                headers: list = ['Категория', 'Доступно мест',
+                                 'Согласились', 'Занято мест']
+                for col_num, header in enumerate(headers, 1):
+                    cell = ws.cell(row=13, column=col_num)
+                    cell.value = header
+
+                self._style_header(ws, 13)
+                row = 14
+                for cat_name, cat_data in admitted_by_category.items():
+                    ws.cell(row=row, column=1).value = cat_name
+                    ws.cell(
+                        row=row, column=2).value = cat_data['available_places']
+                    ws.cell(row=row, column=3).value = cat_data['agreed_count']
+                    ws.cell(row=row, column=4).value = cat_data['total']
+                    row += 1
+
+            self._auto_adjust_column(ws, 'A')
+            for col in ['B', 'C', 'D']:
+                ws.column_dimensions[col].width = 15
 
             logger.info(
                 f"✅ Анализ направления {combo.speciality_name}: {total_apps} заявлений, средний балл {result['avg_score']}")
-            return result
+            return self._get_bytes_io(wb)
 
         except Exception as e:
             logger.error(f"❌ Ошибка анализа направления: {e}")
@@ -139,11 +225,7 @@ class DataAnalyzer:
         finally:
             session.close()
 
-    def get_count_unique_id(self, session: Session, filters: list) -> int:
-        return session.query(func.count(Statistics.id.distinct())).filter(
-            *filters).scalar() or 0
-
-    def analyze_institute(self, filters: dict) -> dict:
+    def analyze_institute(self, filters: dict) -> Union[BytesIO, dict]:
         """Анализ популярности направлений в институте"""
         session = self.db.get_session()
         try:
@@ -175,11 +257,11 @@ class DataAnalyzer:
                 "не сданы один или несколько экзаменов"),
                 Statistics.note.is_(None))
 
-            unique_applicant_count = self.get_count_unique_id(
-                session, [filter_id, filter_applicant_id])
+            unique_applicant_count = session.query(func.count(Statistics.id.distinct())).filter(
+                filter_id, filter_applicant_id).scalar() or 0
 
-            unique_participants_count = self.get_count_unique_id(
-                session, [filter_id, filter_note, filter_applicant_id])
+            unique_participants_count = session.query(func.count(Statistics.id.distinct())).filter(
+                filter_id, filter_applicant_id, filter_note).scalar() or 0
 
             logger.debug(
                 f"Уникальных заявлений: {unique_applicant_count}, уникальных конкурсантов: {unique_participants_count}")
@@ -281,33 +363,57 @@ class DataAnalyzer:
 
             specialities_data.sort(
                 key=lambda x: x['applicants_per_place'], reverse=True)
+
+            wb = self._create_excel_workbook()
+            ws = wb.active
+            if not ws:
+                return {'error': 'Ошибка создания файла'}
+            ws.title = "Анализ института"
+
+            ws['A1'] = "АНАЛИЗ ИНСТИТУТА"
+            ws['A1'].font = Font(bold=True, size=14)
+            ws.merge_cells('A1:F1')
+
+            ws['A2'] = f"Название: {faculty_name}"
+            ws['A3'] = f"Уникальных заявителей: {unique_applicant_count}"
+            ws['A4'] = f"Уникальных конкурсантов: {unique_participants_count}"
+            ws['A5'] = f"Специальностей: {len(specialities_data)}"
+
+            headers: list = ['Специальность', 'Ранг', 'Заявления',
+                             'Мест', 'Спец. кат.', 'Осталось', 'Конкурс']
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=7, column=col_num)
+                cell.value = header
+
+            self._style_header(ws, 7)
+
+            row = 8
             for idx, spec in enumerate(specialities_data, 1):
-                spec['popularity_rank'] = idx  # место по популярности
-            result = {
-                'institute_name': faculty_name,  # название института
-                'total_unique_applicants': unique_applicant_count,  # всего уникальных заявителей
-                # всего уникальных конкурсантов
-                'total_unique_participants': unique_participants_count,
-                # всего специальностей
-                'total_specialities': len(specialities_data),
-                'specialities': specialities_data,  # данные по каждой специальности
-                # самая популярная специальность
-                'most_popular': specialities_data[0]['name'] if specialities_data else None,
-                # самая редкая специальность
-                'least_popular': specialities_data[-1]['name'] if specialities_data else None,
-            }
+                ws.cell(row=row, column=1).value = spec['name']
+                ws.cell(row=row, column=2).value = idx
+                ws.cell(row=row, column=3).value = spec['total_applications']
+                ws.cell(row=row, column=4).value = spec['total_places']
+                ws.cell(
+                    row=row, column=5).value = spec['occupied_by_special_categories']
+                ws.cell(row=row, column=6).value = spec['remaining_places']
+                ws.cell(row=row, column=7).value = spec['applicants_per_place']
+                row += 1
+
+            for col in ['B', 'C', 'D', 'E', 'F', 'G']:
+                ws.column_dimensions[col].width = 12
+            self._auto_adjust_column(ws, 'A')
+
             logger.info(
-                f"✅ Анализ института {faculty_name}: {unique_applicant_count} уникальных заявлений, "
-                f"{len(specialities_data)} специальностей"
-            )
-            return result
+                f"✅ Анализ института {faculty_name}: {len(specialities_data)} специальностей")
+
+            return self._get_bytes_io(wb)
         except Exception as e:
             logger.error(f"❌ Ошибка анализа института: {e}")
             return {'error': '❌ Не удалось проанализировать институт'}
         finally:
             session.close()
 
-    def analyze_university(self, filters: dict) -> dict:
+    def analyze_university(self, filters: dict) -> Union[BytesIO, dict]:
         """Анализ всего университета"""
         session = self.db.get_session()
         try:
@@ -334,11 +440,11 @@ class DataAnalyzer:
                 "не сданы один или несколько экзаменов"),
                 Statistics.note.is_(None))
 
-            unique_applicant_count = self.get_count_unique_id(
-                session, [filter_id, filter_applicant_id])
+            unique_applicant_count = session.query(func.count(Statistics.id.distinct())).filter(
+                filter_id, filter_applicant_id).scalar() or 0
 
-            unique_participants_count = self.get_count_unique_id(
-                session, [filter_id, filter_applicant_id, filter_note])
+            unique_participants_count = session.query(func.count(Statistics.id.distinct())).filter(
+                filter_id, filter_applicant_id, filter_note).scalar() or 0
 
             logger.debug(
                 f"Университет {inst_name}: {unique_applicant_count} заявок, {unique_participants_count} конкурсантов")
@@ -408,21 +514,44 @@ class DataAnalyzer:
             faculty_list.sort(
                 key=lambda x: x['unique_participants'], reverse=True)
 
-            for idx, inst in enumerate(faculty_list, 1):
-                inst['popularity_rank'] = idx
+            wb = self._create_excel_workbook()
+            ws = wb.active
+            if not ws:
+                return {}
+            ws.title = "Анализ ВУЗа"
 
-            result = {
-                'total_unique_applicants': unique_applicant_count,
-                'total_unique_participants': unique_participants_count,
-                'total_institutes': len(faculty_list),
-                'institutes': faculty_list,
-                'most_popular': faculty_list[0]['name'] if faculty_list else None,
-                'least_popular': faculty_list[-1]['name'] if faculty_list else None,
-            }
+            ws['A1'] = "АНАЛИЗ УНИВЕРСИТЕТА"
+            ws['A1'].font = Font(bold=True, size=14)
+            ws.merge_cells('A1:D1')
+
+            ws['A2'] = f"Университет: {inst_name}"
+            ws['A3'] = f"Уникальных заявителей: {unique_applicant_count}"
+            ws['A4'] = f"Уникальных конкурсантов: {unique_participants_count}"
+            ws['A5'] = f"Факультетов: {len(faculty_list)}"
+
+            headers: list = ['Факультет', 'Ранг', 'Заявления', 'Конкурс']
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=7, column=col_num)
+                cell.value = header
+
+            self._style_header(ws, 7)
+
+            row = 8
+            for idx, fac in enumerate(faculty_list, 1):
+                ws.cell(row=row, column=1).value = fac['name']
+                ws.cell(row=row, column=2).value = idx
+                ws.cell(row=row, column=3).value = fac['unique_applications']
+                ws.cell(row=row, column=4).value = fac['unique_participants']
+                row += 1
+
+            for col in ['B', 'C', 'D']:
+                ws.column_dimensions[col].width = 12
+            self._auto_adjust_column(ws, 'A')
+
             logger.info(
                 f"✅ Анализ университета {inst_name}: {len(faculty_list)} институтов"
             )
-            return result
+            return self._get_bytes_io(wb)
 
         except Exception as e:
             logger.error(f"❌ Ошибка анализа университета: {e}")
