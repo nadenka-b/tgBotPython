@@ -48,7 +48,7 @@ class BackgroundParser:
 
             for inst in institutes:
                 inst_value = inst[0]
-                inst_name = level[-1]
+                inst_name = inst[-1]
 
                 faculties_params = {'p_level': level_value,
                                     'p_inst': inst_value}

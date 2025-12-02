@@ -12,7 +12,6 @@ Base = declarative_base()
 class FilterCombination(Base):
     """
     Таблица с сочетаниями фильтров
-    Обновляется редко
     """
     __tablename__ = "filter_combinations"
 
@@ -21,11 +20,11 @@ class FilterCombination(Base):
     level_value = Column(Integer, nullable=False, index=True)
     level_name = Column(String(30), nullable=False, index=True)
 
-    faculty_value = Column(Integer, nullable=False, index=True)
-    faculty_name = Column(String(100), nullable=False, index=True)
-
     inst_value = Column(Integer, nullable=False, index=True)
     inst_name = Column(String(100), nullable=False, index=True)
+
+    faculty_value = Column(Integer, nullable=False, index=True)
+    faculty_name = Column(String(100), nullable=False, index=True)
 
     speciality_value = Column(Integer, nullable=False, index=True)
     speciality_name = Column(String(100), nullable=False, index=True)
@@ -60,8 +59,8 @@ class FilterCombination(Base):
         """Преобразовать в словарь name для пользователя"""
         return {
             'level': str(self.level_name),
-            'faculty': str(self.faculty_name),
             'inst': str(self.inst_name),
+            'faculty': str(self.faculty_name),
             'speciality': str(self.speciality_name),
             'typeofstudy': str(self.typeofstudy_name),
             'category': str(self.category_name),
@@ -84,6 +83,8 @@ class Statistics(Base):
     """
     Таблица со всеми данными поступления КФУ
     - filter_combination_id: ссылка на FilterCombination
+    - admission_category: Категория конкурса
+    - available_places: Количество мест в рамках конкурса
     - epgu_id: Уникальный id абитуриента ЕПГУ
     - applicant_id: id абитуриента
     - score: Сумма конкурсных баллов
@@ -105,7 +106,7 @@ class Statistics(Base):
     )
 
     admission_category = Column(String(50), nullable=True, index=True)
-    available_seats = Column(Integer, nullable=True)
+    available_places = Column(Integer, nullable=True)
     epgu_id = Column(String(15), nullable=True, index=True)
     applicant_id = Column(String(15), nullable=True, index=True)
     score = Column(Integer, nullable=True)

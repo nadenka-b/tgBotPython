@@ -134,7 +134,7 @@ class Database:
                 row = Statistics(
                     filter_combination_id=combo.id,
                     admission_category=record.get('admission_category'),
-                    available_seats=record.get('available_seats'),
+                    available_places=record.get('available_places'),
                     epgu_id=record.get('epgu_id'),
                     applicant_id=record.get('applicant_id'),
                     score=score,

@@ -153,9 +153,9 @@ class Parser:
                 if key.lower() in li_text.lower():
                     match = re.search(r'(\d+)(?:\s|$)', li_text)
                     if match:
-                        seats = int(match.group(1))
-                        plan_data[category_name] = seats
-                        logger.debug(f"✅ {category_name}: {seats} мест")
+                        places = int(match.group(1))
+                        plan_data[category_name] = places
+                        logger.debug(f"✅ {category_name}: {places} мест")
                     break
 
         logger.info(f"📋 План приема по категориям: {plan_data}")
@@ -228,7 +228,7 @@ class Parser:
             logger.debug(f"📋 Обрабатываю таблицу {table_idx + 1}")
             try:
                 admission_category = self._extract_admission_category(table)
-                available_seats = admission_plans.get(admission_category, 0)
+                available_places = admission_plans.get(admission_category, 0)
                 logger.debug(f"📌 Категория приема: {admission_category}")
 
                 column_indices = self._extract_headers(
@@ -253,7 +253,7 @@ class Parser:
                             row_data[key] = None
 
                     row_data['admission_category'] = admission_category
-                    row_data['available_seats'] = available_seats
+                    row_data['available_places'] = available_places
                     all_data.append(row_data)
 
                 logger.debug(
