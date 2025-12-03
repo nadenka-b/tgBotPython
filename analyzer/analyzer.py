@@ -100,8 +100,8 @@ class DataAnalyzer:
         try:
             combo = session.query(FilterCombination).filter(
                 FilterCombination.level_value == filters['level'],
-                FilterCombination.faculty_value == filters['faculty'],
                 FilterCombination.inst_value == filters['inst'],
+                FilterCombination.faculty_value == filters['faculty'],
                 FilterCombination.speciality_value == filters['speciality'],
                 FilterCombination.typeofstudy_value == filters['typeofstudy'],
                 FilterCombination.category_value == filters['category'],
@@ -216,7 +216,7 @@ class DataAnalyzer:
                 ws.column_dimensions[col].width = 15
 
             logger.info(
-                f"✅ Анализ направления {combo.speciality_name}: {total_apps} заявлений, средний балл {result['avg_score']}")
+                f"✅ Анализ направления {combo.speciality_name}: {total_apps} заявлений")
             return self._get_bytes_io(wb)
 
         except Exception as e:
@@ -231,8 +231,8 @@ class DataAnalyzer:
         try:
             base_filter = [
                 FilterCombination.level_value == filters.get('level'),
-                FilterCombination.faculty_value == filters.get('faculty'),
                 FilterCombination.inst_value == filters.get('inst'),
+                FilterCombination.faculty_value == filters.get('faculty'),
                 FilterCombination.typeofstudy_value == filters.get(
                     'typeofstudy'),
                 FilterCombination.category_value == filters.get('category'),

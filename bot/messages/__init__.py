@@ -1,3 +1,1 @@
-from .messages import Messages
-
-messages = Messages()
+from .messages import get_text

@@ -16,12 +16,35 @@ def get_main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def create_filter_buttons(options: list) -> InlineKeyboardMarkup:
+def get_analysis_type_menu() -> InlineKeyboardMarkup:
+    """Выбор типа анализа"""
+    buttons = [
+        [InlineKeyboardButton(
+            text="📊 По направлению",
+            callback_data="analysis_type_by_speciality"
+        )],
+        [InlineKeyboardButton(
+            text="🏛️ По институту",
+            callback_data="analysis_type_by_institute"
+        )],
+        [InlineKeyboardButton(
+            text="🎓 По университету",
+            callback_data="analysis_type_by_university"
+        )],
+        [InlineKeyboardButton(
+            text="❌ Отмена",
+            callback_data="cancel"
+        )],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def create_options_keyboard(options: list[tuple[int, str]]) -> InlineKeyboardMarkup:
     """
-    Создать кнопки для фильтра из списка опций
+    Создать клавиатуру из списка опций
 
     Args:
-        options: список кортежей (value, label)
+        options: список label
 
     Returns:
         InlineKeyboardMarkup с кнопками для каждой опции
@@ -29,19 +52,31 @@ def create_filter_buttons(options: list) -> InlineKeyboardMarkup:
     buttons = []
 
     for value, label in options:
-        # Обрезаем длинный текст если необходимо
-        display_text = label[:40] + "..." if len(label) > 40 else label
         buttons.append([
             InlineKeyboardButton(
-                text=display_text,
-                callback_data=f"filter_{value}"
+                text=label,
+                callback_data=f"option_{value}"
             )
         ])
 
-    # Кнопка отмены
     buttons.append([InlineKeyboardButton(
         text="❌ Отмена",
         callback_data="cancel"
     )])
 
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_new_analysis_keyboard() -> InlineKeyboardMarkup:
+    """Меню после завершения анализа"""
+    buttons = [
+        [InlineKeyboardButton(
+            text="📊 Новый анализ",
+            callback_data="start_analysis"
+        )],
+        [InlineKeyboardButton(
+            text="🏠 Главное меню",
+            callback_data="main_menu"
+        )],
+    ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)

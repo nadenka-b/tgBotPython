@@ -1,6 +1,5 @@
 import logging
 
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -61,7 +60,6 @@ class Database:
                 logger.debug(f"✅ Комбинация найдена: id={combo.id}")
                 return combo
 
-            # Если не нашли — создаем новую
             combo = FilterCombination(
                 level_value=int(filters_dict['level']['value']),
                 level_name=filters_dict['level']['name'],
@@ -103,7 +101,6 @@ class Database:
 
     async def save_data_batch(
         self,
-        # в рекорд сразу только нужные поля и в нужном порядке
         records: list[dict],
         combo: FilterCombination
     ) -> int:
@@ -214,6 +211,189 @@ class Database:
 
         except Exception as e:
             logger.error(f"❌ Ошибка при получении данных: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_levels(self) -> list[tuple[int, str]]:
+        """
+        Получить все уровни образования
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [(1, 'бакалавриат'), (2, 'магистратура')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.level_value,
+                FilterCombination.level_name
+            ).distinct().order_by(FilterCombination.level_value).all()
+
+            levels = [(r.level_value, r.level_name) for r in results]
+            logger.debug(f"✅ Получено {len(levels)} уровней")
+            return levels
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении уровней: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_institutes(self) -> list[tuple[int, str]]:
+        """
+        Получить все филиалы и ВУЗ
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [(0, 'КФУ'), (1, 'Набережночелнинский институт')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.inst_value,
+                FilterCombination.inst_name
+            ).distinct().order_by(FilterCombination.inst_value).all()
+
+            institutes = [(r.inst_value, r.inst_name) for r in results]
+            logger.debug(
+                f"✅ Получено {len(institutes)} филиалов ВУЗа")
+            return institutes
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении филиалов ВУЗа: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_faculties(self, inst_value: str) -> list[tuple[int, str]]:
+        """
+        Получить все институты по ВУЗу
+
+        Args:
+            inst_value: value ВУЗа
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [('6', 'Институт физики'), ('8', 'Юридический факультет')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.faculty_value,
+                FilterCombination.faculty_name
+            ).filter(
+                FilterCombination.inst_value == int(inst_value)
+            ).distinct().order_by(FilterCombination.faculty_value).all()
+
+            faculties = [(r.faculty_value, r.faculty_name) for r in results]
+            logger.debug(f"✅ Получено {len(faculties)} факультетов")
+            return faculties
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении факультетов: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_specialities(
+        self,
+        level_value: str,
+        inst_value: str,
+        faculty_value: str
+    ) -> list[tuple[int, str]]:
+        """
+        Получить направления подготовки
+
+        Args:
+            level_value: value уровня
+            inst_value: value ВУЗа
+            faculty_value: value института
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [(166, '01.03.02 Прикладная математика и информатика'), (203, '38.03.05 Бизнес-информатика')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.speciality_value,
+                FilterCombination.speciality_name
+            ).filter(
+                FilterCombination.level_value == int(level_value),
+                FilterCombination.inst_value == int(inst_value),
+                FilterCombination.faculty_value == int(faculty_value)
+            ).distinct().order_by(FilterCombination.speciality_value).all()
+
+            specialities = [(r.speciality_value, r.speciality_name)
+                            for r in results]
+            logger.debug(f"✅ Получено {len(specialities)} направлений")
+            return specialities
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении направлений: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_study_types(
+        self,
+        level_value: str,
+        inst_value: str,
+        faculty_value: str,
+        speciality_value: str
+    ) -> list[tuple[int, str]]:
+        """
+        Получить типы обучения
+
+        Args:
+            level_value: value уровня
+            inst_value: value ВУЗа
+            faculty_value: value института
+            speciality_value: value направления
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [(1, 'Очная'), (2, 'Очно-заочная')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.typeofstudy_value,
+                FilterCombination.typeofstudy_name
+            ).filter(
+                FilterCombination.level_value == int(level_value),
+                FilterCombination.inst_value == int(inst_value),
+                FilterCombination.faculty_value == int(faculty_value),
+                FilterCombination.speciality_value == int(speciality_value)
+            ).distinct().order_by(FilterCombination.typeofstudy_value).all()
+
+            study_types = [(r.typeofstudy_value, r.typeofstudy_name)
+                           for r in results]
+            logger.debug(f"✅ Получено {len(study_types)} типа обучения")
+            return study_types
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении типов обучения: {e}")
+            return []
+        finally:
+            session.close()
+
+    def get_categories(self) -> list[tuple[int, str]]:
+        """
+        Получить категории конкурса
+
+        Returns:
+            Список кортежей (value, name)
+            Пример: [(1, 'Бюджет'), (2, 'Внебюджет')]
+        """
+        session = self.get_session()
+        try:
+            results = session.query(
+                FilterCombination.category_value,
+                FilterCombination.category_name
+            ).distinct().order_by(FilterCombination.category_value).all()
+
+            categories = [(r.category_value, r.category_name) for r in results]
+            logger.debug(f"✅ Получено {len(categories)} категории")
+            return categories
+        except Exception as e:
+            logger.error(f"❌ Ошибка при получении категорий: {e}")
             return []
         finally:
             session.close()

@@ -1,1 +1,1 @@
-from .states import AnalysisStates, FILTER_CHAIN
+from .states import AnalysisStates, AnalysisType
