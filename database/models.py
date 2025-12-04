@@ -41,9 +41,6 @@ class FilterCombination(Base):
     statistics = relationship(
         "Statistics", back_populates="filter_combo", cascade="all, delete-orphan")
 
-    def __repr__(self):  # зачем?
-        return f"<FilterCombination(id={self.id})>"
-
     def to_filters_dict(self) -> dict[str, str]:
         """Преобразовать в словарь value для URL"""
         return {
@@ -53,17 +50,6 @@ class FilterCombination(Base):
             'p_speciality': str(self.speciality_value),
             'p_typeofstudy': str(self.typeofstudy_value),
             'p_category': str(self.category_value),
-        }
-
-    def to_names_dict(self) -> dict[str, str]:
-        """Преобразовать в словарь name для пользователя"""
-        return {
-            'level': str(self.level_name),
-            'inst': str(self.inst_name),
-            'faculty': str(self.faculty_name),
-            'speciality': str(self.speciality_name),
-            'typeofstudy': str(self.typeofstudy_name),
-            'category': str(self.category_name),
         }
 
 
@@ -119,9 +105,3 @@ class Statistics(Base):
 
     filter_combo = relationship(
         "FilterCombination", back_populates="statistics")
-
-    def __repr__(self):  # сильно подумать
-        return (
-            f"<Statistics("
-            f"id={self.id}, combo_id={self.filter_combination_id})>"
-        )

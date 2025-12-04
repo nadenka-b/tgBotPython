@@ -1,16 +1,7 @@
 from aiogram.fsm.state import State, StatesGroup
-from enum import Enum
-
-
-class AnalysisType(Enum):
-    """Три типа анализа"""
-    BY_SPESIALITY = "by_speciality"      # Анализ по направлению
-    BY_INSTITUTE = "by_institute"      # Анализ по институту
-    BY_UNIVERSITY = "by_university"    # Анализ по университету
 
 
 class AnalysisStates(StatesGroup):
-    """Состояния для диалога анализа"""
     # Выбор типа анализа
     waiting_for_analysis_type = State()
 

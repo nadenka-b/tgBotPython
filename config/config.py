@@ -4,7 +4,7 @@ from environs import Env
 
 @dataclass
 class TgBot:
-    token: str  # Токен для доступа к телеграм-боту
+    token: str
 
 
 @dataclass
@@ -24,7 +24,7 @@ class LogSettings:
 
 @dataclass
 class ParserSettings:
-    base_url: str           # URL страницы КФУ
+    base_url: str
 
 
 @dataclass
@@ -39,7 +39,6 @@ def load_config(path: str | None = None) -> Config:
     env = Env()
     env.read_env(path)
 
-    # base_dir = Path(__file__).parent.parent
     return Config(
         bot=TgBot(token=env("BOT_TOKEN")),
         db=DatabaseSettings(user=env('DB_USER'),

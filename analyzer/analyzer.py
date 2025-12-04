@@ -6,8 +6,7 @@ from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 from typing import Union
 
-from database.db import Database
-from database.models import FilterCombination, Statistics
+from database import Database, FilterCombination, Statistics
 
 logger = logging.getLogger(__name__)
 

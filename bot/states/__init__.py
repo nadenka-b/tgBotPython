@@ -1,1 +1,1 @@
-from .states import AnalysisStates, AnalysisType
+from .states import AnalysisStates

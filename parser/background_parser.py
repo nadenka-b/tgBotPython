@@ -81,6 +81,7 @@ class BackgroundParser:
                         html = await self.parser.fetch_page(study_params)
                         studies = self.parser.extract_filter_options(
                             html, 'typeofstudy')
+                        logger.debug(f"Типы обучения: {studies}")
 
                         for study in studies:
                             typeofstudy_value = study[0]
@@ -137,7 +138,6 @@ class BackgroundParser:
 
         try:
             combinations = self.db.get_all_filter_combinations()
-            logger.info(f"📊 Найдено {len(combinations)} комбинаций фильтров")
             if not combinations:
                 logger.warning("⚠️ Нет комбинаций в БД")
                 return

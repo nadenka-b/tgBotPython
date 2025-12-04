@@ -13,10 +13,6 @@ class Database:
     """Класс для работы с БД"""
 
     def __init__(self, db_url: str):
-        """
-        Args:
-            db_url: Connection string (postgresql://user:pass@localhost/dbname)
-        """
         self.engine = create_engine(db_url, echo=False)
         self.SessionLocal = sessionmaker(
             bind=self.engine, expire_on_commit=False)
@@ -151,67 +147,6 @@ class Database:
             session.rollback()
             logger.error(f"❌ Ошибка при сохранении: {e}")
             return 0
-        finally:
-            session.close()
-
-    def get_data_by_filters(
-        self,
-        level: str | None = None,
-        faculty: str | None = None,
-        inst: str | None = None,
-        speciality: str | None = None,
-        typeofstudy: str | None = None,
-        category: str | None = None,
-        limit: int = 1000
-    ) -> list[Statistics]:
-        """
-        Получить данные из БД по фильтрам
-
-        Args:
-            level, faculty, ... : value фильтров (или None для пропуска)
-            limit: Максимум записей
-
-        Returns:
-            Список записей Statistics
-        """
-        session = self.get_session()
-        try:
-            combo_query = session.query(FilterCombination)
-
-            if level:
-                combo_query = combo_query.filter(
-                    FilterCombination.level_value == level)
-            if faculty:
-                combo_query = combo_query.filter(
-                    FilterCombination.faculty_value == faculty)
-            if inst:
-                combo_query = combo_query.filter(
-                    FilterCombination.inst_value == inst)
-            if speciality:
-                combo_query = combo_query.filter(
-                    FilterCombination.speciality_value == speciality)
-            if typeofstudy:
-                combo_query = combo_query.filter(
-                    FilterCombination.typeofstudy_value == typeofstudy)
-            if category:
-                combo_query = combo_query.filter(
-                    FilterCombination.category_value == category)
-
-            combo = combo_query.first()
-            if not combo:
-                logger.warning("⚠️ Комбинация не найдена")
-                return []
-
-            results = session.query(Statistics).filter(
-                Statistics.filter_combination_id == combo.id
-            ).limit(limit).all()
-
-            logger.info(f"✅ Найдено {len(results)} записей")
-            return results
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка при получении данных: {e}")
-            return []
         finally:
             session.close()
 

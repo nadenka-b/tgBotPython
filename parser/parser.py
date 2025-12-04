@@ -1,4 +1,3 @@
-import asyncio
 import re
 import aiohttp
 import logging
@@ -46,7 +45,7 @@ class Parser:
         """
         try:
             if not self.session:
-                logging.warning("Сессия не инициализирована")
+                logger.warning("Сессия не инициализирована")
                 return ""
             async with self.session.get(self.base_url, params=params) as response:
                 if response.status == 200:
@@ -158,7 +157,7 @@ class Parser:
                         logger.debug(f"✅ {category_name}: {places} мест")
                     break
 
-        logger.info(f"📋 План приема по категориям: {plan_data}")
+        logger.debug(f"📋 План приема по категориям: {plan_data}")
         return plan_data
 
     def _extract_headers(self, table: Tag, table_idx: int, admission_category: str) -> dict[str, int] | None:

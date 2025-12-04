@@ -5,11 +5,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from config.config import load_config
-from parser.parser import Parser
-from parser.background_parser import BackgroundParser
-from database.db import create_db_connection
-from bot.handlers.handlers import create_router
+from config import load_config
+from parser import Parser, BackgroundParser
+from database import create_db_connection
+from bot.handlers import create_router
 
 
 logger = logging.getLogger(__name__)
