@@ -232,8 +232,6 @@ class DataAnalyzer:
                 FilterCombination.level_value == filters.get('level'),
                 FilterCombination.inst_value == filters.get('inst'),
                 FilterCombination.faculty_value == filters.get('faculty'),
-                FilterCombination.typeofstudy_value == filters.get(
-                    'typeofstudy'),
                 FilterCombination.category_value == filters.get('category'),
             ]
             combos = session.query(FilterCombination).filter(

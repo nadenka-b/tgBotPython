@@ -5,12 +5,19 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
 from analyzer import DataAnalyzer
-from bot.messages import get_text
+from bot.messages import get_text, get_param_display_name
 from bot.states import AnalysisStates
 from bot.keyboards import *
 from database import Database
 
 logger = logging.getLogger(__name__)
+
+
+TYPES_ANALYSIS = {
+    'by_speciality': '🎯 Анализ по направлению',
+    'by_institute': '🏛️ Анализ по институту',
+    'by_university': '🎓 Анализ по университету'
+}
 
 PARAM_ORDERS = {
     'by_speciality': [
@@ -25,7 +32,6 @@ PARAM_ORDERS = {
         'level',
         'inst',
         'faculty',
-        'typeofstudy',
         'category'
     ],
     'by_university': [
@@ -35,8 +41,16 @@ PARAM_ORDERS = {
     ]
 }
 
+STATE_MAPPING = {
+    'level': AnalysisStates.waiting_for_level,
+    'inst': AnalysisStates.waiting_for_inst,
+    'faculty': AnalysisStates.waiting_for_faculty,
+    'speciality': AnalysisStates.waiting_for_speciality,
+    'typeofstudy': AnalysisStates.waiting_for_typeofstudy,
+    'category': AnalysisStates.waiting_for_category,
+}
 
-# Вспомогательные функции
+
 def get_param_order(analysis_type: str) -> list[str]:
     """
     Получить порядок параметров для типа анализа
@@ -138,6 +152,13 @@ def create_router(db: Database) -> Router:
         """Приветственное сообщение"""
         await message.answer(get_text('welcome'), reply_markup=get_main_menu())
 
+    @router.message(Command("help"))
+    async def help_command(message: Message):
+        await message.answer(
+            get_text('help'),
+            reply_markup=get_main_menu()
+        )
+
     @router.callback_query(F.data == "help")
     async def help_handler(callback: CallbackQuery):
         """Справка"""
@@ -178,8 +199,8 @@ def create_router(db: Database) -> Router:
             filters={}  # Словарь для сохранения выборов
         )
 
-        logger.info(f"✅ Выбран анализ: {analysis_type_str}")
-        logger.info(f"📋 Порядок параметров: {param_order}")
+        logger.debug(f"✅ Выбран анализ: {analysis_type_str}")
+        logger.debug(f"📋 Порядок параметров: {param_order}")
 
         # Переходим к первому параметру
         await ask_for_parameter(callback.message, state)
@@ -196,17 +217,24 @@ def create_router(db: Database) -> Router:
         param_order = data['param_order']
         current_index = data['current_param_index']
         filters = data.get('filters', {})
+        option_texts = data.get('option_texts', {})
+
+        option_value = callback.data.replace("option_", "")
+        option_name = option_texts.get(option_value, option_value)
 
         # Текущий параметр
         current_param = param_order[current_index]
 
-        # Значение выбранной опции (ID из БД)
-        option_value = callback.data.replace("option_", "")
-
         # Сохраняем в filters
         filters[current_param] = option_value
+        logger.debug(
+            f"✅ Выбран {current_param}: {option_value} ({option_name})")
 
-        logger.info(f"✅ Выбран {current_param}: {option_value}")
+        param_display_name = get_param_display_name(current_param)
+        edit_text = f"✅ Вы выбрали {param_display_name}: {option_name}"
+
+        if callback.message:
+            await callback.message.edit_text(edit_text)
 
         # Переходим к следующему параметру
         current_index += 1
@@ -258,6 +286,7 @@ def create_router(db: Database) -> Router:
         param_order = data['param_order']
         current_index = data['current_param_index']
         filters = data.get('filters', {})
+        analysis_type = data.get('analysis_type', '')
 
         # Если все параметры выбраны - переходим к анализу
         if current_index >= len(param_order):
@@ -266,41 +295,38 @@ def create_router(db: Database) -> Router:
 
         # Текущий параметр
         current_param = param_order[current_index]
-
-        logger.info(f"📍 Запрашиваем параметр: {current_param}")
+        logger.debug(f"📍 Запрашиваем параметр: {current_param}")
 
         try:
             # Получаем опции для текущего параметра
             options = await get_options_for_param(db, current_param, filters)
 
             if not options:
-                await message.answer(
-                    get_text('error_loading'),
-                    reply_markup=get_main_menu()
-                )
+                if message:
+                    await message.answer(
+                        get_text('error_loading'),
+                        reply_markup=get_main_menu()
+                    )
                 await state.clear()
                 return
 
-            # Создаем клавиатуру
             keyboard = create_options_keyboard(options)
 
-            # Отправляем сообщение с опциями
-            await message.answer(
-                get_text(f"choose_{current_param}"),
-                reply_markup=keyboard
-            )
+            option_texts = {}
+            for option_id, option_name in options:
+                option_texts[str(option_id)] = option_name
 
-            # Переходим в соответствующее состояние
-            state_mapping = {
-                'level': AnalysisStates.waiting_for_level,
-                'inst': AnalysisStates.waiting_for_inst,
-                'faculty': AnalysisStates.waiting_for_faculty,
-                'speciality': AnalysisStates.waiting_for_speciality,
-                'typeofstudy': AnalysisStates.waiting_for_typeofstudy,
-                'category': AnalysisStates.waiting_for_category,
-            }
+            await state.update_data(option_texts=option_texts)
 
-            await state.set_state(state_mapping[current_param])
+            analysis_type_text = TYPES_ANALYSIS.get(analysis_type, '')
+
+            message_text = f"{analysis_type_text}\n\n"
+            message_text += get_text(f"choose_{current_param}")
+
+            if message:
+                await message.answer(message_text, reply_markup=keyboard)
+
+            await state.set_state(STATE_MAPPING[current_param])
 
         except Exception as e:
             logger.error(f"❌ Ошибка при получении опций: {e}")
@@ -369,7 +395,6 @@ def create_router(db: Database) -> Router:
                     'level': filters.get('level'),
                     'inst': filters.get('inst'),
                     'faculty': filters.get('faculty'),
-                    'typeofstudy': filters.get('typeofstudy'),
                     'category': filters.get('category')
                 })
 
