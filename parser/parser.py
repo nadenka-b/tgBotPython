@@ -34,7 +34,7 @@ CATEGORY_MAPPING = {
 class Parser:
     """Парсер для сайта КФУ"""
 
-    def __init__(self, session: aiohttp.ClientSession, base_url: str):
+    def __init__(self, session: Optional[aiohttp.ClientSession], base_url: str):
         self.session: Optional[aiohttp.ClientSession] = session
         self.base_url = base_url
 
